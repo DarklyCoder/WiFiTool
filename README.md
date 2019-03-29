@@ -5,10 +5,7 @@ WiFiTool
 例图
 ---
 <center class="half">
-    <img src="./art/pic_01.png" width="200"/> 
-    <img src="./art/pic_02.png" width="200"/> 
-    <img src="./art/pic_03.png" width="200"/> 
-    <img src="./art/pic_04.png" width="200"/>
+    <img src="./art/pic_01.png" width="200"/>   <img src="./art/pic_02.png" width="200"/>   <img src="./art/pic_03.png" width="200"/>   <img src="./art/pic_04.png" width="200"/>
 </center>
 
 使用

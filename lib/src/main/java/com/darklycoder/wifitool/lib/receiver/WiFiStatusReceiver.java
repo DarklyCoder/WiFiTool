@@ -47,8 +47,6 @@ public class WiFiStatusReceiver extends BroadcastReceiver {
             default:
                 break;
         }
-
-        abortBroadcast();
     }
 
 }

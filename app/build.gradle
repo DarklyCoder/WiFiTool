@@ -27,6 +27,6 @@ dependencies {
     implementation 'com.yanzhenjie:permission:2.0.0-rc12'
 
 //    implementation project(':lib')
-    implementation 'com.darklycoder.lib:WiFiTool:1.0.1'
+    implementation 'com.darklycoder.lib:WiFiTool:1.0.2'
 
 }

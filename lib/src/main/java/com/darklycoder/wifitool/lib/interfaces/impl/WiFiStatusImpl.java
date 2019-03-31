@@ -262,6 +262,12 @@ public class WiFiStatusImpl implements WiFiStatusListener {
     }
 
     @Override
+    public WiFiOperateStatus getWiFiOperateStatus() {
+
+        return mOperateStatus;
+    }
+
+    @Override
     public void destroy() {
         try {
             mHandler.removeCallbacksAndMessages(null);

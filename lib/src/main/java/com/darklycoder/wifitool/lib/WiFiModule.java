@@ -14,6 +14,7 @@ import com.darklycoder.wifitool.lib.interfaces.impl.WiFiStatusImpl;
 import com.darklycoder.wifitool.lib.receiver.WiFiStatusReceiver;
 import com.darklycoder.wifitool.lib.type.WiFGetListType;
 import com.darklycoder.wifitool.lib.type.WiFiCipherType;
+import com.darklycoder.wifitool.lib.type.WiFiOperateStatus;
 import com.darklycoder.wifitool.lib.utils.WiFiLogUtils;
 import com.darklycoder.wifitool.lib.utils.WiFiUtils;
 
@@ -156,6 +157,11 @@ public class WiFiModule {
      */
     public void startScan() {
         if (null != mCallback) {
+            if (WiFiOperateStatus.SCANNING == mCallback.getWiFiOperateStatus()) {
+                WiFiLogUtils.d("WiFi扫描中，忽略此次扫描请求！");
+                return;
+            }
+
             mCallback.notifyStartScan();
         }
 
@@ -228,6 +234,11 @@ public class WiFiModule {
      */
     public void connectWiFi(final String SSID, final WiFiCipherType type, final String pwd) {
         if (null != mCallback) {
+            if (WiFiOperateStatus.SCANNING == mCallback.getWiFiOperateStatus()) {
+                WiFiLogUtils.d("WiFi扫描中，忽略此次连接请求！");
+                return;
+            }
+
             mCallback.notifyStartConnect(SSID, mWiFiConfig);
         }
 

@@ -7,6 +7,7 @@ import com.darklycoder.wifitool.lib.info.WiFiCreateConfigStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiRemoveStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiScanInfo;
 import com.darklycoder.wifitool.lib.type.WiFGetListType;
+import com.darklycoder.wifitool.lib.type.WiFiOperateStatus;
 
 import java.util.List;
 
@@ -59,6 +60,11 @@ public interface WiFiStatusListener {
      * 通知移除WiFi状态
      */
     void notifyRemoveStatus(WiFiRemoveStatusInfo info);
+
+    /**
+     * 获取WiFi操作状态
+     */
+    WiFiOperateStatus getWiFiOperateStatus();
 
     /**
      * 释放资源

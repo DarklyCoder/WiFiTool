@@ -31,13 +31,12 @@ import com.yanzhenjie.permission.Permission;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class Test2Activity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "Test2Activity";
     private final String TAG_FRAG = "InputWiFiPasswordDialog";
 
     private Button mBtnScan;
-    private Button mBtnOther;
     private TextView mTvStatus;
     private ListView mListView;
 
@@ -56,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void initViews() {
         mBtnScan = findViewById(R.id.btn_scan);
-        mBtnOther = findViewById(R.id.btn_test);
         mTvStatus = findViewById(R.id.tv_status);
         mListView = findViewById(R.id.list_view);
     }
@@ -66,8 +64,6 @@ public class MainActivity extends AppCompatActivity {
         mAdapter = new ListDataAdapter(this, mData);
         mListView.setAdapter(mAdapter);
 
-        mBtnOther.setVisibility(View.VISIBLE);
-
         //添加监听
         WiFiModule.getInstance().addWiFiListener(TAG, mListener);
     }
@@ -76,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
         mBtnScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AndPermission.with(MainActivity.this)
+                AndPermission.with(Test2Activity.this)
                         .runtime()
                         .permission(Permission.ACCESS_FINE_LOCATION)
                         .onGranted(new Action<List<String>>() {
@@ -89,17 +85,10 @@ public class MainActivity extends AppCompatActivity {
                         .onDenied(new Action<List<String>>() {
                             @Override
                             public void onAction(List<String> data) {
-                                Toast.makeText(MainActivity.this, "请授予位置权限", Toast.LENGTH_LONG).show();
+                                Toast.makeText(Test2Activity.this, "请授予位置权限", Toast.LENGTH_LONG).show();
                             }
                         })
                         .start();
-            }
-        });
-
-        mBtnOther.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, Test2Activity.class));
             }
         });
 

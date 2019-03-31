@@ -88,7 +88,7 @@ public final class WiFiUtils {
      */
     public static List<WiFiScanInfo> getScanList(WifiManager manager) {
         if (null == manager) {
-            return null;
+            return new ArrayList<>();
         }
 
         String curSSID = isActiveWifi(manager) ? manager.getConnectionInfo().getSSID() : "";

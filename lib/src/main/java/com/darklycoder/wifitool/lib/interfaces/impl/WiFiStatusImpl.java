@@ -112,11 +112,22 @@ public class WiFiStatusImpl implements WiFiStatusListener {
 
         if (NetworkInfo.DetailedState.CONNECTED == state) {
             WifiInfo wifiInfo = WiFiModule.getInstance().getConnectedWifiInfo();
-            if (null != wifiInfo) {
-                String SSID = wifiInfo.getSSID();
-                int size = SSID.length();
-                this.waitForConnectSSID = SSID.substring(1, size - 1);
+            if (null == wifiInfo) {
+                WiFiLogUtils.d("当前连接的 WifiInfo 为空");
+                return;
             }
+
+            String SSID = wifiInfo.getSSID();
+            int size = SSID.length();
+            SSID = SSID.substring(1, size - 1);
+
+            if (!TextUtils.isEmpty(waitForConnectSSID) && !waitForConnectSSID.equals(SSID)) {
+                //待连接的和当前连接的不一致
+                WiFiLogUtils.d("待连接的和当前连接的不一致-》waitForConnectSSID：" + waitForConnectSSID + " ||SSID：" + SSID);
+                return;
+            }
+
+            this.waitForConnectSSID = SSID;
 
             if (System.currentTimeMillis() - connectedTime <= 500) {
                 WiFiLogUtils.d("过滤 " + waitForConnectSSID + " WIFI连接成功");

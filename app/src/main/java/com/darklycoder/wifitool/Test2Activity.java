@@ -146,7 +146,7 @@ public class Test2Activity extends AppCompatActivity {
         } else {
             InputWiFiPasswordDialog dialog = new InputWiFiPasswordDialog();
             Bundle bundle = new Bundle();
-            bundle.putSerializable("info", info);
+            bundle.putParcelable("info", info);
             dialog.setArguments(bundle);
 
             dialog.show(getSupportFragmentManager(), TAG_FRAG);

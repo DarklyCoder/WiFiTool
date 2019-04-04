@@ -51,7 +51,7 @@ public class InputWiFiPasswordDialog extends DialogFragment {
 
         Bundle bundle = getArguments();
         if (null != bundle) {
-            mInfo = (WiFiScanInfo) bundle.getSerializable("info");
+            mInfo = bundle.getParcelable("info");
         }
         if (null == mInfo) {
             dismissAllowingStateLoss();

@@ -2,18 +2,18 @@ package com.darklycoder.wifitool.lib.info;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
 import com.darklycoder.wifitool.lib.type.WiFiCipherType;
 import com.darklycoder.wifitool.lib.type.WiFiConnectType;
 
-import java.io.Serializable;
-
 /**
  * WiFi扫描信息
  */
-public class WiFiScanInfo implements Serializable, Comparable<WiFiScanInfo> {
+public class WiFiScanInfo implements Comparable<WiFiScanInfo>, Parcelable {
 
     //扫描结果
     public ScanResult scanResult;
@@ -67,4 +67,38 @@ public class WiFiScanInfo implements Serializable, Comparable<WiFiScanInfo> {
         return WiFiCipherType.WIFI_CIPHER_NO_PASS;
     }
 
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeParcelable(this.scanResult, flags);
+        dest.writeParcelable(this.configuration, flags);
+        dest.writeInt(this.level);
+        dest.writeInt(this.connectType);
+    }
+
+    public WiFiScanInfo() {
+    }
+
+    protected WiFiScanInfo(Parcel in) {
+        this.scanResult = in.readParcelable(ScanResult.class.getClassLoader());
+        this.configuration = in.readParcelable(WifiConfiguration.class.getClassLoader());
+        this.level = in.readInt();
+        this.connectType = in.readInt();
+    }
+
+    public static final Parcelable.Creator<WiFiScanInfo> CREATOR = new Parcelable.Creator<WiFiScanInfo>() {
+        @Override
+        public WiFiScanInfo createFromParcel(Parcel source) {
+            return new WiFiScanInfo(source);
+        }
+
+        @Override
+        public WiFiScanInfo[] newArray(int size) {
+            return new WiFiScanInfo[size];
+        }
+    };
 }

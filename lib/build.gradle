@@ -16,8 +16,8 @@ android {
     defaultConfig {
         minSdkVersion 15
         targetSdkVersion 28
-        versionCode 5
-        versionName "1.0.4"
+        versionCode 6
+        versionName "1.0.5"
     }
 
     buildTypes {
@@ -44,7 +44,7 @@ publish {
     userOrg = 'darklycoder'
     groupId = 'com.darklycoder.lib'
     artifactId = 'WiFiTool'
-    publishVersion = '1.0.4'
+    publishVersion = '1.0.5'
     desc = 'WiFiTool'
     website = 'https://github.com/DarklyCoder/WiFiTool.git'
 }

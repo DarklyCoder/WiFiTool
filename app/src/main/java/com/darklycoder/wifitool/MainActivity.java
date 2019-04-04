@@ -240,8 +240,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onWiFiConnected(String SSID) {
-            mTvStatus.setText(SSID + "已连接");
+        public void onWiFiConnected(String SSID, boolean isInit) {
+            mTvStatus.setText(isInit + " || " + SSID + "已连接");
             refreshData(SSID, WiFiConnectType.CONNECTED);
 
             notifyState(NetworkInfo.DetailedState.CONNECTED);

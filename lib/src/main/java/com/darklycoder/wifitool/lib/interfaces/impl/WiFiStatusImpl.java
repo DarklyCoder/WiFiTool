@@ -127,6 +127,8 @@ public class WiFiStatusImpl implements WiFiStatusListener {
                 return;
             }
 
+            boolean isInit = TextUtils.isEmpty(this.waitForConnectSSID);
+
             this.waitForConnectSSID = SSID;
 
             if (System.currentTimeMillis() - connectedTime <= 500) {
@@ -141,7 +143,7 @@ public class WiFiStatusImpl implements WiFiStatusListener {
             WiFiLogUtils.d(waitForConnectSSID + " WIFI连接成功");
 
             for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                entry.getValue().onWiFiConnected(waitForConnectSSID);
+                entry.getValue().onWiFiConnected(waitForConnectSSID, isInit);
             }
 
             //连接成功

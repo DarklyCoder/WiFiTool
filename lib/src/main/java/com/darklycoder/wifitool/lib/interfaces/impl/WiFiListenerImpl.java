@@ -44,7 +44,7 @@ public class WiFiListenerImpl implements WiFiListener {
     }
 
     @Override
-    public void onWiFiConnected(String SSID) {
+    public void onWiFiConnected(String SSID, boolean isInit) {
 
     }
 

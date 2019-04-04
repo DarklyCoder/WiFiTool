@@ -47,7 +47,7 @@ public interface WiFiListener {
     /**
      * WiFi连接成功
      */
-    void onWiFiConnected(String SSID);
+    void onWiFiConnected(String SSID, boolean isInit);
 
     /**
      * WiFi连接失败

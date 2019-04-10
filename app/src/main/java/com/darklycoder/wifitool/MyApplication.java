@@ -13,7 +13,7 @@ public class MyApplication extends Application {
 
         //初始化
         WiFiConfig config = new WiFiConfig.Builder()
-                .setTimeOut(1000 * 4)
+                .setTimeOut(1000 * 20)
                 .build();
         WiFiModule.getInstance().setWiFiConfig(config);
         WiFiModule.getInstance().init(this);

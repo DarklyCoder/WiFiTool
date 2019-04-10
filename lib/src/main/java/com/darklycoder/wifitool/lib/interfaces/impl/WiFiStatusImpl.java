@@ -2,6 +2,7 @@ package com.darklycoder.wifitool.lib.interfaces.impl;
 
 import android.content.Intent;
 import android.net.NetworkInfo;
+import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
@@ -37,6 +38,7 @@ public class WiFiStatusImpl implements WiFiStatusListener {
     private Handler mHandler;
     private boolean isTimeOut = false;//是否是超时
     private long connectedTime = 0;//连接成功时间
+    private int connectType = 0;//连接方式 1表示通过config直接连接
 
     public WiFiStatusImpl(HashMap<String, WiFiListener> listeners) {
         this.mListeners = listeners;
@@ -61,17 +63,17 @@ public class WiFiStatusImpl implements WiFiStatusListener {
                 //WIFI处于关闭状态
                 WiFiLogUtils.d("WIFI已关闭");
                 this.mOperateStatus = WiFiOperateStatus.CLOSED;
+
+                for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
+                    entry.getValue().onCloseWiFi();
+                }
+
                 break;
             }
 
             case WifiManager.WIFI_STATE_DISABLING: {
                 //正在关闭
                 WiFiLogUtils.d("WIFI关闭中");
-
-                for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                    entry.getValue().onCloseWiFi();
-                }
-
                 this.mOperateStatus = WiFiOperateStatus.CLOSING;
                 break;
             }
@@ -131,9 +133,10 @@ public class WiFiStatusImpl implements WiFiStatusListener {
 
             this.waitForConnectSSID = SSID;
 
-            if (System.currentTimeMillis() - connectedTime <= 500) {
-                WiFiLogUtils.d("过滤 " + waitForConnectSSID + " WIFI连接成功");
+            if (System.currentTimeMillis() - connectedTime <= 800) {
+                WiFiLogUtils.d("过滤 " + waitForConnectSSID + " WIFI连接成功消息");
 
+                connectedTime = System.currentTimeMillis();
                 this.waitForConnectSSID = null;
                 return;
             }
@@ -146,10 +149,11 @@ public class WiFiStatusImpl implements WiFiStatusListener {
                 entry.getValue().onWiFiConnected(waitForConnectSSID, isInit);
             }
 
-            //连接成功
+            //连接成功，移除超时监听
             mHandler.removeMessages(WHAT_TIME_OUT);
             this.mOperateStatus = WiFiOperateStatus.CONNECTED;
             this.waitForConnectSSID = null;
+            this.connectType = 0;
 
             WiFiModule.getInstance().getScanList(WiFGetListType.TYPE_SORT);
         }
@@ -161,11 +165,14 @@ public class WiFiStatusImpl implements WiFiStatusListener {
             return;
         }
 
+        SupplicantState state = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
         int errorResult = intent.getIntExtra(WifiManager.EXTRA_SUPPLICANT_ERROR, -1);
 
-        if (errorResult == WifiManager.ERROR_AUTHENTICATING) {
+        if (null != state && state == SupplicantState.DISCONNECTED
+                && errorResult == WifiManager.ERROR_AUTHENTICATING) {
             this.mOperateStatus = WiFiOperateStatus.CONNECT_FAIL;
 
+            //移除延时监听
             mHandler.removeMessages(WHAT_TIME_OUT);
 
             if (isTimeOut) {
@@ -178,10 +185,16 @@ public class WiFiStatusImpl implements WiFiStatusListener {
 
             //密码错误
             for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                entry.getValue().onWiFiConnectFail(waitForConnectSSID, WiFiConnectFailType.PASSWORD_ERROR);
+                if (connectType == 0) {
+                    entry.getValue().onWiFiConnectFail(waitForConnectSSID, WiFiConnectFailType.PASSWORD_ERROR);
+
+                } else {
+                    entry.getValue().onWiFiConnectFail(waitForConnectSSID, WiFiConnectFailType.DIRECT_PASSWORD_ERROR);
+                }
             }
 
             this.waitForConnectSSID = null;
+            this.connectType = 0;
         }
     }
 
@@ -202,17 +215,19 @@ public class WiFiStatusImpl implements WiFiStatusListener {
     }
 
     @Override
-    public void notifyStartConnect(String SSID, WiFiConfig config) {
-        WiFiLogUtils.d("开始连接 " + SSID);
+    public void notifyStartConnect(String SSID, WiFiConfig config, int connectType) {
+        WiFiLogUtils.d("开始" + (connectType == 1 ? "直接" : "") + "连接 " + SSID);
 
         this.waitForConnectSSID = SSID;
         this.mOperateStatus = WiFiOperateStatus.CONNECTING;
+        this.connectType = connectType;
 
         for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
             entry.getValue().onWiFiStartConnect(SSID);
         }
 
         //超时检测
+        this.isTimeOut = false;
         mHandler.removeMessages(WHAT_TIME_OUT);
         Message message = Message.obtain();
         message.what = WHAT_TIME_OUT;
@@ -223,7 +238,7 @@ public class WiFiStatusImpl implements WiFiStatusListener {
     @Override
     public void notifyStartConnectStatus(WiFiCreateConfigStatusInfo info) {
         if (info.isSuccess()) {
-            WiFiLogUtils.d("开始扫描WIFI，" + info.SSID + " 配置创建成功！");
+            WiFiLogUtils.d("开始连接WIFI，" + info.SSID + " 配置创建成功！");
 
             this.mOperateStatus = WiFiOperateStatus.CONNECTING;
 
@@ -324,6 +339,7 @@ public class WiFiStatusImpl implements WiFiStatusListener {
 
                     mOperateStatus = WiFiOperateStatus.CONNECT_FAIL;
                     waitForConnectSSID = null;
+                    connectType = 0;
 
                     //手动关闭连接
                     WiFiModule.getInstance().closeAllConnect();

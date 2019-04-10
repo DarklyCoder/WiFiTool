@@ -2,6 +2,7 @@ package com.darklycoder.wifitool.lib;
 
 import android.content.Context;
 import android.content.IntentFilter;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
@@ -167,6 +168,7 @@ public class WiFiModule {
 
         if (!isWiFiEnable()) {
             //开启WiFi
+            WiFiLogUtils.d("WiFi不可用，启用WiFi！");
             toggleWiFiEnable(true);
 
             return;
@@ -239,7 +241,7 @@ public class WiFiModule {
                 return;
             }
 
-            mCallback.notifyStartConnect(SSID, mWiFiConfig);
+            mCallback.notifyStartConnect(SSID, mWiFiConfig, 0);
         }
 
         addDisposable(Observable
@@ -275,6 +277,30 @@ public class WiFiModule {
                     }
                 })
         );
+    }
+
+    /**
+     * 使用已经保存过的配置连接WiFi
+     *
+     * @param configuration 配置
+     */
+    public void connectWiFi(WifiConfiguration configuration) {
+        if (null != mCallback) {
+            if (WiFiOperateStatus.SCANNING == mCallback.getWiFiOperateStatus()) {
+                WiFiLogUtils.d("WiFi扫描中，忽略此次连接请求！");
+                return;
+            }
+
+            String SSID = configuration.SSID;
+            int size = SSID.length();
+            SSID = SSID.substring(1, size - 1);
+
+            mCallback.notifyStartConnect(SSID, mWiFiConfig, 1);
+        }
+
+        WiFiUtils.closeAllConnect(mWifiManager);
+
+        enableNetwork(configuration.networkId);
     }
 
     /**

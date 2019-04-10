@@ -37,6 +37,7 @@ public class InputWiFiPasswordDialog extends DialogFragment {
 
     private WiFiScanInfo mInfo;
     private boolean isConnecting = false;
+    private int mConnectType;
 
     @Nullable
     @Override
@@ -52,6 +53,7 @@ public class InputWiFiPasswordDialog extends DialogFragment {
         Bundle bundle = getArguments();
         if (null != bundle) {
             mInfo = bundle.getParcelable("info");
+            mConnectType = bundle.getInt("connectType", 0);
         }
         if (null == mInfo) {
             dismissAllowingStateLoss();
@@ -64,7 +66,12 @@ public class InputWiFiPasswordDialog extends DialogFragment {
         mIvClose = view.findViewById(R.id.iv_close);
         mTvConnectState = view.findViewById(R.id.tv_connect_state);
 
-        mTvTitle.setText(mInfo.scanResult.SSID);
+        if (mConnectType == 1) {
+            mTvTitle.setText("修改" + mInfo.scanResult.SSID);
+
+        } else {
+            mTvTitle.setText(mInfo.scanResult.SSID);
+        }
 
         mEtPassword.addTextChangedListener(new TextWatcher() {
             @Override

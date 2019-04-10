@@ -43,8 +43,10 @@ public interface WiFiStatusListener {
 
     /**
      * 通知开始准备连接
+     *
+     * @param connectType 1：表示直接连接
      */
-    void notifyStartConnect(String SSID, WiFiConfig config);
+    void notifyStartConnect(String SSID, WiFiConfig config, int connectType);
 
     /**
      * 通知开始准备连接状态

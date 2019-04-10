@@ -110,7 +110,12 @@ public class MainActivity extends AppCompatActivity {
 
                 if (info.connectType != WiFiConnectType.CONNECTED.type) {
                     //输入密码，连接
-                    showInputDialog(info);
+                    if (null != info.configuration) {
+                        WiFiModule.getInstance().connectWiFi(info.configuration);
+
+                    } else {
+                        showInputDialog(info, 0);
+                    }
 
                 } else {
                     showDelDialog(info);
@@ -150,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 输入密码连接wifi
      */
-    private void showInputDialog(WiFiScanInfo info) {
+    private void showInputDialog(WiFiScanInfo info, int type) {
         if (WiFiCipherType.WIFI_CIPHER_NO_PASS == info.getCipherType()) {
             WiFiModule.getInstance().connectWiFi(info.scanResult.SSID, WiFiCipherType.WIFI_CIPHER_NO_PASS, null);
 
@@ -158,6 +163,7 @@ public class MainActivity extends AppCompatActivity {
             InputWiFiPasswordDialog dialog = new InputWiFiPasswordDialog();
             Bundle bundle = new Bundle();
             bundle.putParcelable("info", info);
+            bundle.putInt("connectType", type);
             dialog.setArguments(bundle);
 
             dialog.show(getSupportFragmentManager(), TAG_FRAG);
@@ -187,6 +193,15 @@ public class MainActivity extends AppCompatActivity {
         if (null != fragment && fragment.isVisible() && fragment instanceof InputWiFiPasswordDialog) {
             ((InputWiFiPasswordDialog) fragment).dismissAllowingStateLoss();
         }
+    }
+
+    private WiFiScanInfo findScanInfo(String SSID) {
+        for (WiFiScanInfo scanInfo : mData) {
+            if (SSID.equals(scanInfo.scanResult.SSID)) {
+                return scanInfo;
+            }
+        }
+        return null;
     }
 
     private WiFiListener mListener = new WiFiListenerImpl() {
@@ -253,6 +268,14 @@ public class MainActivity extends AppCompatActivity {
             refreshData(SSID, WiFiConnectType.DISCONNECTED);
 
             notifyState(NetworkInfo.DetailedState.DISCONNECTED);
+
+            if (type == WiFiConnectFailType.DIRECT_PASSWORD_ERROR) {
+                //直连密码错误，提示用户修改密码
+                WiFiScanInfo scanInfo = findScanInfo(SSID);
+                if (null != scanInfo) {
+                    showInputDialog(scanInfo, 1);
+                }
+            }
         }
 
         @Override

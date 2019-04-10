@@ -7,6 +7,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.text.TextUtils;
 
+import com.darklycoder.wifitool.lib.WiFiModule;
 import com.darklycoder.wifitool.lib.info.WiFiCreateConfigStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiRemoveStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiScanInfo;
@@ -241,14 +242,16 @@ public final class WiFiUtils {
 
         try {
             if (config.networkId != -1) {
+
                 //获取当前WiFi的创建者
                 Field field = config.getClass().getDeclaredField("creatorName");
                 field.setAccessible(true);
                 Object creatorName = field.get(config);
+                boolean isSystemApp = WiFiModule.getInstance().isSystemApplication();
 
-                WiFiLogUtils.d("field:" + field + "||creatorName：" + creatorName);
+                WiFiLogUtils.d("isSystemApp:" + isSystemApp + "||field:" + field + "||creatorName：" + creatorName);
 
-                if (pkg.equals(creatorName)) {
+                if (pkg.equals(creatorName) || isSystemApp) {
 
                     info.isSuccess = manager.disableNetwork(config.networkId)
                             && manager.removeNetwork(config.networkId)

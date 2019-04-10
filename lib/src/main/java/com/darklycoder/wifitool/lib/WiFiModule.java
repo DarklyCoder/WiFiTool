@@ -2,6 +2,8 @@ package com.darklycoder.wifitool.lib;
 
 import android.content.Context;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -377,6 +379,20 @@ public class WiFiModule {
                     }
                 })
         );
+    }
+
+    public boolean isSystemApplication() {
+        try {
+            PackageManager packageManager = mContext.get().getPackageManager();
+
+            ApplicationInfo app = packageManager.getApplicationInfo(mContext.get().getPackageName(), 0);
+            return (app != null && (app.flags & ApplicationInfo.FLAG_SYSTEM) > 0);
+
+        } catch (Exception e) {
+            WiFiLogUtils.e(e);
+        }
+
+        return false;
     }
 
     /**

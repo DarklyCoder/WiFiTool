@@ -21,8 +21,9 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.darklycoder.wifitool.lib.WiFiModule;
 import com.darklycoder.wifitool.lib.info.WiFiScanInfo;
+import com.darklycoder.wifitool.lib.WiFiModule;
+import com.darklycoder.wifitool.lib.interfaces.ConnectWiFiActionListener;
 
 /**
  * wifi密码输入框
@@ -94,46 +95,33 @@ public class InputWiFiPasswordDialog extends DialogFragment {
         mEtPassword.setFocusableInTouchMode(true);
         mEtPassword.requestFocus();
 
-        mEtPassword.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    InputMethodManager inputMethodManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                    inputMethodManager.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
+        mEtPassword.post(() -> {
+            try {
+                InputMethodManager inputMethodManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                inputMethodManager.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
 
-                } catch (Exception e) {
-                    e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        mIvClose.setOnClickListener(v -> mEtPassword.setText(null));
+
+        view.findViewById(R.id.tv_cancel).setOnClickListener(v -> dismissAllowingStateLoss());
+
+        view.findViewById(R.id.tv_connect).setOnClickListener(v -> {
+                    //连接
+                    if (isConnecting) {
+                        return;
+                    }
+
+                    isConnecting = true;
+
+                    WiFiModule.getInstance().connectWiFi(mInfo.scanResult.SSID, mInfo.getCipherType(), mEtPassword.getText().toString().trim(), mConnectActionListener);
+
+                    mTvConnect.setEnabled(!isConnecting);
                 }
-            }
-        });
-
-        mIvClose.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mEtPassword.setText(null);
-            }
-        });
-
-        view.findViewById(R.id.tv_cancel).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dismissAllowingStateLoss();
-            }
-        });
-
-        view.findViewById(R.id.tv_connect).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //连接
-                if (isConnecting) {
-                    return;
-                }
-
-                isConnecting = true;
-                WiFiModule.getInstance().connectWiFi(mInfo.scanResult.SSID, mInfo.getCipherType(), mEtPassword.getText().toString().trim());
-                mTvConnect.setEnabled(!isConnecting);
-            }
-        });
+        );
     }
 
     @Override
@@ -176,6 +164,12 @@ public class InputWiFiPasswordDialog extends DialogFragment {
 
         mIvClose.setVisibility(isEmpty(password) ? View.GONE : View.VISIBLE);
         mTvConnect.setEnabled(!isConnecting && isValidPassword(password));
+    }
+
+    private ConnectWiFiActionListener mConnectActionListener;
+
+    public void setConnectListener(ConnectWiFiActionListener actionListener) {
+        this.mConnectActionListener = actionListener;
     }
 
     /**

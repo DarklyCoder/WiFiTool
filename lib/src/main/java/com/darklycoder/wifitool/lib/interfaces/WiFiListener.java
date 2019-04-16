@@ -4,13 +4,13 @@ import android.net.wifi.WifiConfiguration;
 
 import com.darklycoder.wifitool.lib.info.WiFiRemoveStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiScanInfo;
-import com.darklycoder.wifitool.lib.type.WiFGetListType;
 import com.darklycoder.wifitool.lib.type.WiFiConnectFailType;
+import com.darklycoder.wifitool.lib.type.WiFiGetListType;
 
 import java.util.List;
 
 /**
- * WiFi相关状态监听
+ * WiFi全局相关状态监听
  */
 public interface WiFiListener {
 
@@ -20,19 +20,14 @@ public interface WiFiListener {
     void onStartScan();
 
     /**
-     * 打开WiFi
-     */
-    void onOpenWiFi(boolean success);
-
-    /**
-     * 关闭WiFi
+     * 通知WiFi关闭
      */
     void onCloseWiFi();
 
     /**
      * WiFi数据更新
      */
-    void onDataChange(WiFGetListType type, List<WiFiScanInfo> list);
+    void onDataChange(WiFiGetListType type, List<WiFiScanInfo> list);
 
     /**
      * 开始连接WiFi
@@ -46,6 +41,8 @@ public interface WiFiListener {
 
     /**
      * WiFi连接成功
+     *
+     * @param isInit 标识是否是初始连接成功
      */
     void onWiFiConnected(String SSID, boolean isInit);
 

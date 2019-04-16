@@ -6,7 +6,7 @@ package com.darklycoder.wifitool.lib;
 public class WiFiConfig {
 
     //默认超时时间
-    public static final long DEFAULT_TIME_OUT = 1000 * 10;
+    private static final long DEFAULT_TIME_OUT = 1000 * 15;
 
     public long timeOut = DEFAULT_TIME_OUT;
 

@@ -1,13 +1,16 @@
 package com.darklycoder.wifitool.lib.utils;
 
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.text.TextUtils;
 
-import com.darklycoder.wifitool.lib.WiFiModule;
 import com.darklycoder.wifitool.lib.info.WiFiCreateConfigStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiRemoveStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiScanInfo;
@@ -181,15 +184,19 @@ public final class WiFiUtils {
             return;
         }
 
+        // FIXME: 2019/4/16 防止自动连接，小米等手机会弹出权限框
         for (WifiConfiguration c : manager.getConfiguredNetworks()) {
             manager.disableNetwork(c.networkId);
         }
+
+        // 断开后会自动连接WiFi
+//        manager.disconnect();
     }
 
     /**
      * 连接WiFi
      */
-    public static WiFiCreateConfigStatusInfo connectWiFi(WifiManager manager, String SSID, WiFiCipherType type, String pwd, String pkg) {
+    public static WiFiCreateConfigStatusInfo connectWiFi(WifiManager manager, String SSID, WiFiCipherType type, String pwd, Context context) {
         WiFiCreateConfigStatusInfo info = new WiFiCreateConfigStatusInfo();
         info.SSID = SSID;
         info.isSuccess = false;
@@ -205,7 +212,7 @@ public final class WiFiUtils {
         }
 
         //存在旧的配置，先尝试移除WiFi
-        if (removeWiFi(manager, SSID, pkg).isSuccess) {
+        if (removeWiFi(manager, SSID, context).isSuccess) {
             //移除成功，重新添加WiFi
             return addWifi(manager, SSID, type, pwd);
         }
@@ -224,7 +231,7 @@ public final class WiFiUtils {
      * 移除WiFi
      * <p>Android6.0 之后应用只能删除自己创建的WIFI网络</p>
      */
-    public static WiFiRemoveStatusInfo removeWiFi(WifiManager manager, String SSID, String pkg) {
+    public static WiFiRemoveStatusInfo removeWiFi(WifiManager manager, String SSID, Context context) {
         WiFiRemoveStatusInfo info = new WiFiRemoveStatusInfo();
         info.SSID = SSID;
 
@@ -240,23 +247,44 @@ public final class WiFiUtils {
             return info;
         }
 
+        if (config.networkId == -1) {
+            info.isSuccess = false;
+            WiFiLogUtils.d("networkId 非法！");
+            return info;
+        }
+
+        boolean isSystemApp = isSystemApplication(context);
+        if (isSystemApp) {
+            WiFiLogUtils.d("是系统App，可以直接删除！");
+            info.isSuccess = manager.disableNetwork(config.networkId)
+                    && manager.removeNetwork(config.networkId)
+                    && manager.saveConfiguration();
+
+            return info;
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            //6.0之前
+            info.isSuccess = manager.disableNetwork(config.networkId)
+                    && manager.removeNetwork(config.networkId)
+                    && manager.saveConfiguration();
+
+            return info;
+        }
+
         try {
-            if (config.networkId != -1) {
+            //获取当前WiFi的创建者
+            Field field = config.getClass().getDeclaredField("creatorName");
+            field.setAccessible(true);
+            Object creatorName = field.get(config);
 
-                //获取当前WiFi的创建者
-                Field field = config.getClass().getDeclaredField("creatorName");
-                field.setAccessible(true);
-                Object creatorName = field.get(config);
-                boolean isSystemApp = WiFiModule.getInstance().isSystemApplication();
+            WiFiLogUtils.d("field:" + field + "||creatorName：" + creatorName);
 
-                WiFiLogUtils.d("isSystemApp:" + isSystemApp + "||field:" + field + "||creatorName：" + creatorName);
-
-                if (pkg.equals(creatorName) || isSystemApp) {
-
-                    info.isSuccess = manager.disableNetwork(config.networkId)
-                            && manager.removeNetwork(config.networkId)
-                            && manager.saveConfiguration();
-                }
+            if (context.getPackageName().equals(creatorName)) {
+                WiFiLogUtils.d("是当前app创建的WiFi，可以直接删除！");
+                info.isSuccess = manager.disableNetwork(config.networkId)
+                        && manager.removeNetwork(config.networkId)
+                        && manager.saveConfiguration();
             }
 
         } catch (Exception e) {
@@ -270,13 +298,19 @@ public final class WiFiUtils {
      * 添加WiFi到系统
      */
     private static WiFiCreateConfigStatusInfo addWifi(WifiManager manager, String SSID, WiFiCipherType type, String pwd) {
-        WifiConfiguration configuration = createConfiguration(SSID, type, pwd);
-        configuration.networkId = manager.addNetwork(configuration);
-
         WiFiCreateConfigStatusInfo configInfo = new WiFiCreateConfigStatusInfo();
         configInfo.SSID = SSID;
-        configInfo.configuration = configuration;
-        configInfo.isSuccess = (configuration.networkId != -1);
+
+        try {
+            WifiConfiguration configuration = createConfiguration(SSID, type, pwd);
+            configuration.networkId = manager.addNetwork(configuration);
+
+            configInfo.configuration = configuration;
+            configInfo.isSuccess = (configuration.networkId != -1);
+
+        } catch (Exception e) {
+            WiFiLogUtils.e(e);
+        }
 
         return configInfo;
     }
@@ -403,6 +437,20 @@ public final class WiFiUtils {
             }
         }
         return true;
+    }
+
+    private static boolean isSystemApplication(Context context) {
+        try {
+            PackageManager packageManager = context.getPackageManager();
+
+            ApplicationInfo app = packageManager.getApplicationInfo(context.getPackageName(), 0);
+            return (app != null && (app.flags & ApplicationInfo.FLAG_SYSTEM) > 0);
+
+        } catch (Exception e) {
+            WiFiLogUtils.e(e);
+        }
+
+        return false;
     }
 
 }

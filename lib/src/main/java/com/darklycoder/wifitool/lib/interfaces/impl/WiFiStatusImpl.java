@@ -5,49 +5,42 @@ import android.net.NetworkInfo;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Handler;
-import android.os.Message;
-import android.text.TextUtils;
 
-import com.darklycoder.wifitool.lib.WiFiConfig;
-import com.darklycoder.wifitool.lib.WiFiModule;
-import com.darklycoder.wifitool.lib.info.WiFiCreateConfigStatusInfo;
-import com.darklycoder.wifitool.lib.info.WiFiRemoveStatusInfo;
-import com.darklycoder.wifitool.lib.info.WiFiScanInfo;
-import com.darklycoder.wifitool.lib.interfaces.WiFiListener;
+import com.darklycoder.wifitool.lib.info.action.IWiFiAction;
+import com.darklycoder.wifitool.lib.info.action.WiFiConnectAction;
+import com.darklycoder.wifitool.lib.info.action.WiFiDirectConnectAction;
+import com.darklycoder.wifitool.lib.info.action.WiFiDisableAction;
+import com.darklycoder.wifitool.lib.info.action.WiFiEnableAction;
+import com.darklycoder.wifitool.lib.info.action.WiFiScanAction;
 import com.darklycoder.wifitool.lib.interfaces.WiFiStatusListener;
-import com.darklycoder.wifitool.lib.type.WiFGetListType;
-import com.darklycoder.wifitool.lib.type.WiFiConnectFailType;
-import com.darklycoder.wifitool.lib.type.WiFiOperateStatus;
+import com.darklycoder.wifitool.lib.interfaces.WiFiSupportListener;
+import com.darklycoder.wifitool.lib.type.Types;
 import com.darklycoder.wifitool.lib.utils.WiFiLogUtils;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-/**
- * 处理WiFi状态回调
- */
 public class WiFiStatusImpl implements WiFiStatusListener {
 
-    private static final int WHAT_TIME_OUT = 1;
+    private WiFiSupportListener mSupportListener;
 
-    private String waitForConnectSSID = null;//待连接的WiFi
-    private WiFiOperateStatus mOperateStatus = WiFiOperateStatus.IDLE;//当前状态
-    private HashMap<String, WiFiListener> mListeners;
-    private Handler mHandler;
-    private boolean isTimeOut = false;//是否是超时
-    private long connectedTime = 0;//连接成功时间
-    private int connectType = 0;//连接方式 1表示通过config直接连接
-
-    public WiFiStatusImpl(HashMap<String, WiFiListener> listeners) {
-        this.mListeners = listeners;
-        this.mHandler = new Handler(new StatusCallBack());
+    public WiFiStatusImpl(WiFiSupportListener listener) {
+        this.mSupportListener = listener;
     }
 
     @Override
     public void handleScanResultsChanged(Intent intent) {
-        WiFiModule.getInstance().getScanList(WiFGetListType.TYPE_SCAN);
+        if (null == mSupportListener) {
+            return;
+        }
+
+        IWiFiAction action = mSupportListener.getCurrentAction();
+        if (action instanceof WiFiScanAction) {
+            //扫描结束
+            WiFiLogUtils.d("扫描结束，" + action.toString());
+            mSupportListener.doneScanAction((WiFiScanAction) action);
+            return;
+        }
+
+        //WiFi列表发生变动
+        mSupportListener.onWiFiListChange();
     }
 
     @Override
@@ -62,39 +55,39 @@ public class WiFiStatusImpl implements WiFiStatusListener {
             case WifiManager.WIFI_STATE_DISABLED: {
                 //WIFI处于关闭状态
                 WiFiLogUtils.d("WIFI已关闭");
-                this.mOperateStatus = WiFiOperateStatus.CLOSED;
 
-                for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                    entry.getValue().onCloseWiFi();
+                IWiFiAction action = (null == mSupportListener) ? null : mSupportListener.getCurrentAction();
+                if (action instanceof WiFiDisableAction) {
+                    action.end();
                 }
 
+                if (null != mSupportListener) {
+                    mSupportListener.onWiFiClose();
+                }
                 break;
             }
 
             case WifiManager.WIFI_STATE_DISABLING: {
                 //正在关闭
                 WiFiLogUtils.d("WIFI关闭中");
-                this.mOperateStatus = WiFiOperateStatus.CLOSING;
                 break;
             }
 
             case WifiManager.WIFI_STATE_ENABLED: {
                 //已经打开
-                WiFiLogUtils.d("WIFI已打开:" + mOperateStatus.state);
-                if (WiFiOperateStatus.OPENING == mOperateStatus) {
-                    WiFiLogUtils.d("WIFI已打开");
-                    WiFiModule.getInstance().startScan();
-                    return;
-                }
+                WiFiLogUtils.d("WIFI已打开");
 
-                this.mOperateStatus = WiFiOperateStatus.OPENED;
+                //判断当前执行的action是否是WiFiScanAction
+                IWiFiAction action = (null == mSupportListener) ? null : mSupportListener.getCurrentAction();
+                if (action instanceof WiFiEnableAction) {
+                    action.end();
+                }
                 break;
             }
 
             case WifiManager.WIFI_STATE_ENABLING: {
                 //正在打开
                 WiFiLogUtils.d("打开WIFI中...");
-                this.mOperateStatus = WiFiOperateStatus.OPENING;
                 break;
             }
 
@@ -113,7 +106,11 @@ public class WiFiStatusImpl implements WiFiStatusListener {
         NetworkInfo.DetailedState state = info.getDetailedState();
 
         if (NetworkInfo.DetailedState.CONNECTED == state) {
-            WifiInfo wifiInfo = WiFiModule.getInstance().getConnectedWifiInfo();
+            if (null == mSupportListener) {
+                return;
+            }
+
+            WifiInfo wifiInfo = mSupportListener.getConnectedWifiInfo();
             if (null == wifiInfo) {
                 WiFiLogUtils.d("当前连接的 WifiInfo 为空");
                 return;
@@ -123,233 +120,73 @@ public class WiFiStatusImpl implements WiFiStatusListener {
             int size = SSID.length();
             SSID = SSID.substring(1, size - 1);
 
-            if (!TextUtils.isEmpty(waitForConnectSSID) && !waitForConnectSSID.equals(SSID)) {
-                //待连接的和当前连接的不一致
-                WiFiLogUtils.d("待连接的和当前连接的不一致-》waitForConnectSSID：" + waitForConnectSSID + " ||SSID：" + SSID);
+            //连接成功
+            IWiFiAction action = mSupportListener.getCurrentAction();
+
+            if (action instanceof WiFiConnectAction) {
+                WiFiConnectAction wiFiConnectAction = (WiFiConnectAction) action;
+
+                if (!wiFiConnectAction.SSID.equals(SSID)) {
+                    WiFiLogUtils.d("当前" + wiFiConnectAction.SSID + "与" + SSID + "不一致！");
+                    mSupportListener.doneConnectSuccess(SSID, Types.ConnectSuccessType.NOT_MATCH);
+
+                    return;
+                }
+
+                if (null != wiFiConnectAction.listener) {
+                    wiFiConnectAction.listener.onResult(Types.ConnectResultType.SUCCESS);
+                }
+
+                mSupportListener.doneConnectSuccess(SSID, Types.ConnectSuccessType.NORMAL);
+
+                WiFiLogUtils.d("WiFi连接成功，" + action.toString());
+                action.end();
+
                 return;
             }
 
-            boolean isInit = TextUtils.isEmpty(this.waitForConnectSSID);
-
-            this.waitForConnectSSID = SSID;
-
-            if (System.currentTimeMillis() - connectedTime <= 800) {
-                WiFiLogUtils.d("过滤 " + waitForConnectSSID + " WIFI连接成功消息");
-
-                connectedTime = System.currentTimeMillis();
-                this.waitForConnectSSID = null;
-                return;
-            }
-
-            connectedTime = System.currentTimeMillis();
-
-            WiFiLogUtils.d(waitForConnectSSID + " WIFI连接成功");
-
-            for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                entry.getValue().onWiFiConnected(waitForConnectSSID, isInit);
-            }
-
-            //连接成功，移除超时监听
-            mHandler.removeMessages(WHAT_TIME_OUT);
-            this.mOperateStatus = WiFiOperateStatus.CONNECTED;
-            this.waitForConnectSSID = null;
-            this.connectType = 0;
-
-            WiFiModule.getInstance().getScanList(WiFGetListType.TYPE_SORT);
+            WiFiLogUtils.d("WiFi连接成功，" + SSID);
+            mSupportListener.doneConnectSuccess(SSID, Types.ConnectSuccessType.SYSTEM);
         }
     }
 
     @Override
     public void handleSupplicantStateChanged(Intent intent) {
-        if (TextUtils.isEmpty(waitForConnectSSID)) {
+        if (null == intent) {
             return;
         }
 
         SupplicantState state = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
         int errorResult = intent.getIntExtra(WifiManager.EXTRA_SUPPLICANT_ERROR, -1);
 
-        if (null != state && state == SupplicantState.DISCONNECTED
-                && errorResult == WifiManager.ERROR_AUTHENTICATING) {
-            this.mOperateStatus = WiFiOperateStatus.CONNECT_FAIL;
+        if (null != state && state == SupplicantState.DISCONNECTED && errorResult == WifiManager.ERROR_AUTHENTICATING) {
 
-            //移除延时监听
-            mHandler.removeMessages(WHAT_TIME_OUT);
-
-            if (isTimeOut) {
-                isTimeOut = false;
-                WiFiLogUtils.d("由于 " + waitForConnectSSID + " WIFI连接超时，忽略密码错误");
+            if (null == mSupportListener) {
                 return;
             }
 
-            WiFiLogUtils.d(waitForConnectSSID + " WIFI连接失败，密码错误");
-
             //密码错误
-            for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                if (connectType == 0) {
-                    entry.getValue().onWiFiConnectFail(waitForConnectSSID, WiFiConnectFailType.PASSWORD_ERROR);
+            IWiFiAction action = mSupportListener.getCurrentAction();
 
-                } else {
-                    entry.getValue().onWiFiConnectFail(waitForConnectSSID, WiFiConnectFailType.DIRECT_PASSWORD_ERROR);
+            if (action instanceof WiFiConnectAction) {
+
+                if (Types.ActionStateType.END == action.getActionState()) {
+                    return;
                 }
+
+                if (null != ((WiFiConnectAction) action).listener) {
+                    if (action instanceof WiFiDirectConnectAction) {
+                        ((WiFiConnectAction) action).listener.onResult(Types.ConnectResultType.DIRECT_PASSWORD_ERROR);
+
+                    } else {
+                        ((WiFiConnectAction) action).listener.onResult(Types.ConnectResultType.PASSWORD_ERROR);
+                    }
+                }
+
+                mSupportListener.doneConnectFail(((WiFiConnectAction) action));
+                WiFiLogUtils.d("WiFi连接失败，密码错误，" + action.toString());
+                action.end();
             }
-
-            this.waitForConnectSSID = null;
-            this.connectType = 0;
-        }
-    }
-
-    @Override
-    public void notifyStartScan() {
-        if (WiFiModule.getInstance().isWiFiEnable()) {
-            this.mOperateStatus = WiFiOperateStatus.SCANNING;
-
-        } else {
-            this.mOperateStatus = WiFiOperateStatus.CLOSED;
-        }
-
-        WiFiLogUtils.d("开始扫描WIFI列表！");
-
-        for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-            entry.getValue().onStartScan();
-        }
-    }
-
-    @Override
-    public void notifyStartConnect(String SSID, WiFiConfig config, int connectType) {
-        WiFiLogUtils.d("开始" + (connectType == 1 ? "直接" : "") + "连接 " + SSID);
-
-        this.waitForConnectSSID = SSID;
-        this.mOperateStatus = WiFiOperateStatus.CONNECTING;
-        this.connectType = connectType;
-
-        for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-            entry.getValue().onWiFiStartConnect(SSID);
-        }
-
-        //超时检测
-        this.isTimeOut = false;
-        mHandler.removeMessages(WHAT_TIME_OUT);
-        Message message = Message.obtain();
-        message.what = WHAT_TIME_OUT;
-        message.obj = SSID;
-        mHandler.sendMessageDelayed(message, config.timeOut);
-    }
-
-    @Override
-    public void notifyStartConnectStatus(WiFiCreateConfigStatusInfo info) {
-        if (info.isSuccess()) {
-            WiFiLogUtils.d("开始连接WIFI，" + info.SSID + " 配置创建成功！");
-
-            this.mOperateStatus = WiFiOperateStatus.CONNECTING;
-
-            for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                entry.getValue().onWiFiCreateConfig(info.SSID, info.configuration);
-            }
-
-            WiFiModule.getInstance().enableNetwork(info.configuration.networkId);
-
-            return;
-        }
-
-        WiFiLogUtils.d("连接 " + info.SSID + " WIFI失败，系统限制，无法移除WIFI！");
-
-        for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-            entry.getValue().onWiFiConnectFail(info.SSID, WiFiConnectFailType.SYSTEM_LIMIT_ERROR);
-        }
-
-        //初始连接失败，移除超时检测
-        mHandler.removeMessages(WHAT_TIME_OUT);
-        this.mOperateStatus = WiFiOperateStatus.CONNECT_FAIL;
-        this.waitForConnectSSID = null;
-    }
-
-    @Override
-    public void notifyWiFiList(WiFGetListType type, List<WiFiScanInfo> list) {
-        if (type == WiFGetListType.TYPE_SCAN) {
-            WiFiLogUtils.d("WIFI列表扫描结束！");
-            this.mOperateStatus = WiFiOperateStatus.SCANNED;
-
-        } else {
-            WiFiLogUtils.d("WIFI列表排序刷新！");
-        }
-
-        for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-            entry.getValue().onDataChange(type, list);
-        }
-    }
-
-    @Override
-    public void notifyRemoveStatus(WiFiRemoveStatusInfo info) {
-        for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-            entry.getValue().onWiFiRemoveResult(info);
-        }
-
-        WiFiLogUtils.d(info.SSID + " WIFI移除 " + info.isSuccess);
-
-        WiFiModule.getInstance().getScanList(WiFGetListType.TYPE_SORT);
-    }
-
-    @Override
-    public WiFiOperateStatus getWiFiOperateStatus() {
-
-        return mOperateStatus;
-    }
-
-    @Override
-    public void destroy() {
-        try {
-            mHandler.removeCallbacksAndMessages(null);
-
-            this.mOperateStatus = WiFiOperateStatus.IDLE;
-            this.waitForConnectSSID = null;
-
-        } catch (Exception e) {
-            WiFiLogUtils.e(e);
-        }
-    }
-
-    private class StatusCallBack implements Handler.Callback {
-
-        @Override
-        public boolean handleMessage(Message msg) {
-            switch (msg.what) {
-
-                case WHAT_TIME_OUT:
-                    //检查有没有超时
-                    mHandler.removeMessages(WHAT_TIME_OUT);
-
-                    if (WiFiOperateStatus.CONNECTING != mOperateStatus) {
-                        return true;
-                    }
-
-                    if (TextUtils.isEmpty(waitForConnectSSID)) {
-                        return true;
-                    }
-
-                    if (!waitForConnectSSID.equals(msg.obj)) {
-                        return true;
-                    }
-
-                    isTimeOut = true;
-                    WiFiLogUtils.d("连接 " + msg.obj + " WIFI失败，连接超时！");
-
-                    for (Map.Entry<String, WiFiListener> entry : mListeners.entrySet()) {
-                        entry.getValue().onWiFiConnectFail(waitForConnectSSID, WiFiConnectFailType.TIMEOUT_ERROR);
-                    }
-
-                    mOperateStatus = WiFiOperateStatus.CONNECT_FAIL;
-                    waitForConnectSSID = null;
-                    connectType = 0;
-
-                    //手动关闭连接
-                    WiFiModule.getInstance().closeAllConnect();
-                    break;
-
-                default:
-                    break;
-            }
-
-            return true;
         }
     }
 

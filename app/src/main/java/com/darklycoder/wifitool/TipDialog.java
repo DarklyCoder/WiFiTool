@@ -14,20 +14,12 @@ public class TipDialog {
 
         builder.setTitle(title)
                 .setMessage(content)
-                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                })
-                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
+                .setNegativeButton("取消", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("确定", (dialog, which) -> {
+                    dialog.dismiss();
 
-                        if (null != listener) {
-                            listener.onClick(null);
-                        }
+                    if (null != listener) {
+                        listener.onClick(null);
                     }
                 });
 

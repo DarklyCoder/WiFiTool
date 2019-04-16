@@ -15,9 +15,7 @@ public class MyApplication extends Application {
         WiFiConfig config = new WiFiConfig.Builder()
                 .setTimeOut(1000 * 20)
                 .build();
-        WiFiModule.getInstance().setWiFiConfig(config);
-        WiFiModule.getInstance().init(this);
+        WiFiModule.getInstance().setConfig(config).init(this);
     }
-
 
 }

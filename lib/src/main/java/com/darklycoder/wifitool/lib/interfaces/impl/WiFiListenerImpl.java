@@ -1,13 +1,12 @@
 package com.darklycoder.wifitool.lib.interfaces.impl;
 
-
 import android.net.wifi.WifiConfiguration;
 
 import com.darklycoder.wifitool.lib.info.WiFiRemoveStatusInfo;
 import com.darklycoder.wifitool.lib.info.WiFiScanInfo;
 import com.darklycoder.wifitool.lib.interfaces.WiFiListener;
-import com.darklycoder.wifitool.lib.type.WiFGetListType;
 import com.darklycoder.wifitool.lib.type.WiFiConnectFailType;
+import com.darklycoder.wifitool.lib.type.WiFiGetListType;
 
 import java.util.List;
 
@@ -19,17 +18,12 @@ public class WiFiListenerImpl implements WiFiListener {
     }
 
     @Override
-    public void onOpenWiFi(boolean success) {
-
-    }
-
-    @Override
     public void onCloseWiFi() {
 
     }
 
     @Override
-    public void onDataChange(WiFGetListType type, List<WiFiScanInfo> list) {
+    public void onDataChange(WiFiGetListType type, List<WiFiScanInfo> list) {
 
     }
 

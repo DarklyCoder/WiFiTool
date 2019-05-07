@@ -386,7 +386,8 @@ public class WiFiModule {
             PackageManager packageManager = mContext.get().getPackageManager();
 
             ApplicationInfo app = packageManager.getApplicationInfo(mContext.get().getPackageName(), 0);
-            return (app != null && (app.flags & ApplicationInfo.FLAG_SYSTEM) > 0);
+
+            return app != null && app.uid == 1000;
 
         } catch (Exception e) {
             WiFiLogUtils.e(e);
